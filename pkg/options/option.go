@@ -7,8 +7,8 @@ import (
 	"log"
 	"sync"
 
-	"gopkg.in/yaml.v2"
 	"github.com/fsnotify/fsnotify"
+	"gopkg.in/yaml.v2"
 
 	"github.com/rancher/receiver/pkg/providers"
 	"github.com/rancher/receiver/pkg/providers/alibaba"
@@ -16,28 +16,27 @@ import (
 )
 
 var (
-	mut sync.RWMutex
+	mut       sync.RWMutex
 	receivers map[string]providers.Receiver
-	senders map[string]providers.Sender
+	senders   map[string]providers.Sender
 )
 
-
 // when occur error, it will panic directly
-func Init(configPath string)  {
+func Init(configPath string) {
 	updateMemoryConfig(configPath)
 	go syncMemoryConfig(configPath)
 }
 
-func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Sender, error){
+func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Sender, error) {
 	mut.RLock()
 	defer mut.RUnlock()
 
 	receiver, exists := receivers[receiverName]
-	if  !exists {
+	if !exists {
 		return providers.Receiver{}, nil, fmt.Errorf("error, receiver:%s is not exists\n", receiverName)
 	}
 
-	sender,  exists := senders[receiver.Provider]
+	sender, exists := senders[receiver.Provider]
 	if !exists {
 		return providers.Receiver{}, nil, fmt.Errorf("error, provider:%s is not exists\n", receiver.Provider)
 	}

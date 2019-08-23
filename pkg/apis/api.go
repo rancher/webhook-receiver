@@ -49,4 +49,3 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 
 	return
 }
-

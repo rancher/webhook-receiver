@@ -10,13 +10,13 @@ import (
 )
 
 type Server struct {
-	port int
+	port       int
 	configPath string
 }
 
 func New(port int, configPath string) (*Server, error) {
 	s := &Server{
-		port: port,
+		port:       port,
 		configPath: configPath,
 	}
 

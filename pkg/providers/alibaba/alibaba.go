@@ -9,14 +9,13 @@ import (
 )
 
 const (
-	scheme = "https"
-	regionID = "region_id"
-	accessKeyID = "access_key_id"
+	scheme          = "https"
+	regionID        = "region_id"
+	accessKeyID     = "access_key_id"
 	accessKeySecret = "access_key_secret"
-	templateCode = "template_code"
-	Name = "alibaba"
+	templateCode    = "template_code"
+	Name            = "alibaba"
 )
-
 
 type sender struct {
 	client *dysmsapi.Client
@@ -45,7 +44,7 @@ func New(opt map[string]string) (providers.Sender, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &sender{client:  client}, nil
+	return &sender{client: client}, nil
 }
 
 func validate(opt map[string]string) error {

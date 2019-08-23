@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	port = flag.Int("port", 9094, "listen port")
+	port   = flag.Int("port", 9094, "listen port")
 	config = flag.String("config", "/etc/receiver/config.yaml", "config path")
 )
 
