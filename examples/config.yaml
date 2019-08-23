@@ -1,21 +1,23 @@
+##厂商目前支持阿里云短信服务(alibaba),钉钉机器人通知(dingTalk)
 providers:
   alibaba:
-    region_id: region_id
-    access_key_id: access_key
-    access_key_secret: access_secret
+    access_key_id: access_key_id
+    access_key_secret: access_key_secret
+    sign_name: sign_name
     template_code: template_code
-  netease:
-    api_key: api_key
-    api_secret: api_secret
+  dingTalk:
+    webhook_url: webhook_url
+#************************************************************#
+#接收者支持多个，多个接受者可以配置一个云厂商
 receivers:
-  - name: test1
-    provider: xxx123dasd
+  ## name
+  test1:
+    provider: dingTalk
+  test2:
+    provider: alibaba
     to:
-      - 1333333
-      - 1444444
-  - name: test2
-    provider: netease
+    - 110
+  test3:
+    provider: alibaba
     to:
-      - 233333
-      - 244444
-      - dasda
+    - 120

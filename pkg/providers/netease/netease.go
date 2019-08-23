@@ -1,8 +1,7 @@
+// NOTE:not supported
 package netease
 
 import (
-	"log"
-
 	"github.com/rancher/receiver/pkg/providers"
 )
 
@@ -18,6 +17,5 @@ func New(opt map[string]string) (providers.Sender, error) {
 }
 
 func (s *sender) Send(msg string, receiver providers.Receiver) error {
-	log.Println("netease: ", msg)
 	return nil
 }

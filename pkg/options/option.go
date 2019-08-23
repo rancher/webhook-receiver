@@ -3,41 +3,55 @@ package options
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"path/filepath"
+	"strings"
 	"sync"
 
-	"gopkg.in/yaml.v2"
 	"github.com/fsnotify/fsnotify"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 
 	"github.com/rancher/receiver/pkg/providers"
 	"github.com/rancher/receiver/pkg/providers/alibaba"
-	"github.com/rancher/receiver/pkg/providers/netease"
+	"github.com/rancher/receiver/pkg/providers/dingtalk"
 )
 
 var (
-	mut sync.RWMutex
+	mut       sync.RWMutex
 	receivers map[string]providers.Receiver
-	senders map[string]providers.Sender
+	senders   map[string]providers.Sender
 )
 
-
 // when occur error, it will panic directly
-func Init(configPath string)  {
-	updateMemoryConfig(configPath)
-	go syncMemoryConfig(configPath)
+func Init(configPath string) {
+	dir := filepath.Dir(configPath)
+	log.Infof("config dir:%s\n", dir)
+	name := filepath.Base(configPath)
+	log.Infof("config name:%s\n", name)
+	viperConfigName := strings.TrimRight(name, ".yaml")
+	viper.AddConfigPath(dir)
+	viper.SetConfigName(viperConfigName)
+	viper.SetConfigType("yaml")
+
+	updateMemoryConfig()
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		updateMemoryConfig()
+	})
+
+	go viper.WatchConfig()
 }
 
-func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Sender, error){
+func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Sender, error) {
 	mut.RLock()
 	defer mut.RUnlock()
 
 	receiver, exists := receivers[receiverName]
-	if  !exists {
+	if !exists {
 		return providers.Receiver{}, nil, fmt.Errorf("error, receiver:%s is not exists\n", receiverName)
 	}
 
-	sender,  exists := senders[receiver.Provider]
+	sender, exists := senders[receiver.Provider]
 	if !exists {
 		return providers.Receiver{}, nil, fmt.Errorf("error, provider:%s is not exists\n", receiver.Provider)
 	}
@@ -45,74 +59,60 @@ func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Se
 	return receiver, sender, nil
 }
 
-func syncMemoryConfig(configPath string) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal("new watcher err: ", err)
-	}
-	if err := watcher.Add(configPath); err != nil {
-		log.Fatalf("watch file:%s err:%v", configPath, err)
+func updateMemoryConfig() {
+	if err := viper.ReadInConfig(); err != nil {
+		log.Errorf("read config err:%v", err)
+		return
 	}
 
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				log.Println("event:", event)
-				log.Println("ok:", ok)
-				if !ok {
-					break
-				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					updateMemoryConfig(configPath)
-				}
-
-			case err, ok := <-watcher.Errors:
-				log.Println(err)
-				log.Println(ok)
-			}
+	receiversMap := viper.GetStringMap("receivers")
+	updateReceivers := make(map[string]providers.Receiver)
+	for k, v := range receiversMap {
+		receiver := providers.Receiver{}
+		if err := convertInterfaceToStruct(v, &receiver); err != nil {
+			log.Error("parse receiver:%s to struct err:%v", k, err)
+			return
 		}
-		log.Println("break select")
-	}()
-}
-
-func updateMemoryConfig(configPath string) {
-	log.Println("info: ", configPath, " is update")
-	opt, err := newOption(configPath)
-	if err != nil {
-		log.Fatal("new option err: ", err)
+		updateReceivers[k] = receiver
 	}
 
-	mut.Lock()
-	defer mut.Unlock()
-
-	receivers = make(map[string]providers.Receiver)
-	for _, v := range opt.Receivers {
-		receivers[v.Name] = v
-	}
-
-	senders = make(map[string]providers.Sender)
-	for k, v := range opt.Providers {
+	providersMap := viper.GetStringMap("providers")
+	updateSenders := make(map[string]providers.Sender)
+	for k, v := range providersMap {
 		creator, err := getProviderCreator(k)
 		if err != nil {
-			log.Fatal(err)
+			log.Errorf("update config err:%v", err)
+			return
 		}
-		sender, err := creator(v)
+		optMap := make(map[string]string)
+		if err := convertInterfaceToStruct(v, &optMap); err != nil {
+			log.Errorf("parse provider:%s err:%v", k, err)
+			return
+		}
+		sender, err := creator(optMap)
 		if err != nil {
-			log.Fatal(err)
+			log.Errorf("update config err:%v", err)
+			return
 		}
-		senders[k] = sender
+		updateSenders[k] = sender
 	}
+
+	// replace
+	mut.Lock()
+	defer mut.Unlock()
+	receivers = updateReceivers
+	senders = updateSenders
+	log.Info("update config success")
 }
 
 func getProviderCreator(name string) (providers.Creator, error) {
 	switch name {
 	case alibaba.Name:
 		return alibaba.New, nil
-	case netease.Name:
-		return netease.New, nil
+	case dingtalk.Name:
+		return dingtalk.New, nil
 	default:
-		return nil, errors.New(fmt.Sprintf("provider :%s is not support", name))
+		return nil, errors.New(fmt.Sprintf("provider %s is not support", name))
 	}
 }
 
@@ -122,15 +122,23 @@ type option struct {
 	Receivers []providers.Receiver
 }
 
-func newOption(configPath string) (option, error) {
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return option{}, err
-	}
+func newOption(data []byte) (option, error) {
 	opt := option{}
 	if err := yaml.Unmarshal(data, &opt); err != nil {
 		return option{}, err
 	}
 
 	return opt, nil
+}
+
+func convertInterfaceToStruct(inter interface{}, s interface{}) error {
+	byteData, err := yaml.Marshal(inter)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(byteData, s); err != nil {
+		return err
+	}
+
+	return nil
 }
