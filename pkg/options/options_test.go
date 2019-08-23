@@ -11,7 +11,7 @@ func TestNew(t *testing.T) {
 	data, err := ioutil.ReadFile("../../examples/config.yaml")
 	assert.Nil(t, err)
 
-	opt, err :=  New(data)
+	opt, err := New(data)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, opt)

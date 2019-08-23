@@ -8,10 +8,10 @@ import (
 var tpl *template.Template
 
 func init() {
-		var err error
-		tpl, err = template.New("").Option("missingkey=zero").Parse(NotificationTmpl)
-		if err != nil {
-			panic(err)
+	var err error
+	tpl, err = template.New("").Option("missingkey=zero").Parse(NotificationTmpl)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -107,4 +107,3 @@ func ExecuteTextString(data interface{}) (string, error) {
 
 	return buf.String(), nil
 }
-

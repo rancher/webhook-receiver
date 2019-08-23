@@ -2,13 +2,13 @@ package apis
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/emicklei/go-restful"
 	"github.com/prometheus/alertmanager/template"
 
-	"github.com/rancher/receiver/pkg/options"
-	"github.com/rancher/receiver/pkg/tmpl"
+	"github.com/rancher/webhook-receiver/pkg/options"
+	"github.com/rancher/webhook-receiver/pkg/tmpl"
+	log "github.com/sirupsen/logrus"
 )
 
 func RegisterAPIs() {
@@ -24,29 +24,35 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 	// TODO http req response action
 	data := template.Data{}
 	if err := json.NewDecoder(req.Request.Body).Decode(&data); err != nil {
-		log.Println("err: ", err)
-		resp.WriteErrorString(500, err.Error())
+		log.Errorf("webhook data parse err:%v", err)
+		resp.WriteErrorString(400, err.Error())
 		return
 	}
 
 	name := req.PathParameter("receiver-name")
 	receiver, sender, err := options.GetReceiverAndSender(name)
 	if err != nil {
-		log.Printf("get receiver and sender err:%v", err)
+		log.Errorf("get receiver name:%s err:%v", name, err)
+		resp.WriteErrorString(500, err.Error())
 		return
 	}
 
 	msg, err := tmpl.ExecuteTextString(data)
 	if err != nil {
-		log.Println("tmpl parse err: ", err)
+		log.Errorf("tmpl parse err: %v", err)
+		resp.WriteErrorString(500, err.Error())
 		return
 	}
 
-	log.Println("msg:", msg)
-	log.Println("receiver name:", receiver.Name)
-	log.Println("provider name:", receiver.Provider)
-	sender.Send(msg, receiver)
+	log.Infof("receiver:%s,provider:%s,msg:%s\n", name, receiver.Provider, msg)
+	if err := sender.Send(msg, receiver); err != nil {
+		log.Errorf("send msg err:%v", err)
+		resp.WriteErrorString(500, err.Error())
+		return
+	} else {
+		resp.WriteHeader(200)
+		log.Infof("send msg successful")
+	}
 
 	return
 }
-

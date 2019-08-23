@@ -7,7 +7,6 @@ type Sender interface {
 type Creator func(opt map[string]string) (Sender, error)
 
 type Receiver struct {
-	Name string
 	Provider string
-	To []string
+	To       []string
 }
