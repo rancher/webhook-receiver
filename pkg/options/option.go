@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -12,7 +11,8 @@ import (
 
 	"github.com/rancher/receiver/pkg/providers"
 	"github.com/rancher/receiver/pkg/providers/alibaba"
-	"github.com/rancher/receiver/pkg/providers/netease"
+	"github.com/rancher/receiver/pkg/providers/dingtalk"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -47,7 +47,7 @@ func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Se
 func syncMemoryConfig(configPath string) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal("new watcher err: ", err)
+		log.Fatal("new config fs watcher err:", err)
 	}
 	if err := watcher.Add(configPath); err != nil {
 		log.Fatalf("watch file:%s err:%v", configPath, err)
@@ -57,61 +57,63 @@ func syncMemoryConfig(configPath string) {
 		for {
 			select {
 			case event, ok := <-watcher.Events:
-				log.Println("event:", event)
-				log.Println("ok:", ok)
 				if !ok {
 					break
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					updateMemoryConfig(configPath)
 				}
-
-			case err, ok := <-watcher.Errors:
-				log.Println(err)
-				log.Println(ok)
+			case err, _ := <-watcher.Errors:
+				log.Errorf("fs watcher event err:%v", err)
 			}
 		}
-		log.Println("break select")
 	}()
 }
 
 func updateMemoryConfig(configPath string) {
-	log.Println("info: ", configPath, " is update")
 	opt, err := newOption(configPath)
 	if err != nil {
-		log.Fatal("new option err: ", err)
+		// log error, and not update
+		log.Fatalf("update config on path:%s, err:%v, will not update config", configPath, err)
+		return
 	}
 
-	mut.Lock()
-	defer mut.Unlock()
-
-	receivers = make(map[string]providers.Receiver)
+	updateReceivers := make(map[string]providers.Receiver)
 	for _, v := range opt.Receivers {
-		receivers[v.Name] = v
+		updateReceivers[v.Name] = v
 	}
 
-	senders = make(map[string]providers.Sender)
+	updateSenders := make(map[string]providers.Sender)
 	for k, v := range opt.Providers {
 		creator, err := getProviderCreator(k)
 		if err != nil {
-			log.Fatal(err)
+			log.Errorf("update config err:%v", err)
+			return
 		}
 		sender, err := creator(v)
 		if err != nil {
-			log.Fatal(err)
+			log.Errorf("update config err:%v", err)
+			return
 		}
-		senders[k] = sender
+		updateSenders[k] = sender
 	}
+
+	// replace
+	mut.Lock()
+	defer mut.Unlock()
+	receivers = updateReceivers
+	senders = updateSenders
+	log.Info("update config sucess")
 }
 
 func getProviderCreator(name string) (providers.Creator, error) {
 	switch name {
 	case alibaba.Name:
 		return alibaba.New, nil
-	case netease.Name:
-		return netease.New, nil
+	case dingtalk.Name:
+		return dingtalk.New, nil
 	default:
-		return nil, errors.New(fmt.Sprintf("provider :%s is not support", name))
+		return nil, errors.New(fmt.Sprintf("provider %s is not support", name))
 	}
 }
 

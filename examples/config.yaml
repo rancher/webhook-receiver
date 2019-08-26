@@ -1,21 +1,22 @@
-providers:
-  alibaba:
-    region_id: region_id
-    access_key_id: access_key
-    access_key_secret: access_secret
-    template_code: template_code
-  netease:
-    api_key: api_key
-    api_secret: api_secret
-receivers:
-  - name: test1
-    provider: xxx123dasd
-    to:
-      - 1333333
-      - 1444444
-  - name: test2
-    provider: netease
-    to:
-      - 233333
-      - 244444
-      - dasda
+##厂商目前支持阿里云短信服务(alibaba),钉钉机器人通知(dingTalk)
+#providers:
+#  alibaba:
+#    access_key_id: access_key_id
+#    access_key_secret: access_key_secret
+#    sign_name: sign_name
+#    template_code: template_code
+#  dingTalk:
+#    webhook_url: webhook_url
+#************************************************************#
+#接收者支持多个，多个接受者可以配置一个云厂商
+#receivers:
+#  - name: test1
+#    provider: dingTalk
+#  - name: test2
+#    provider: alibaba
+#    to:
+#      - 110
+#  - name: test3
+#    provider: alibaba
+#    to:
+#      - 120

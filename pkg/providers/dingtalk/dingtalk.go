@@ -1,24 +1,33 @@
+// we just support dingtalk robot now
 package dingtalk
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/rancher/receiver/pkg/providers"
 	"io/ioutil"
-	"log"
 	"net/http"
+
+	"github.com/rancher/receiver/pkg/providers"
 )
 
+
 const (
-	dingtalkErrorCode = "errcode"
-	webhookURL = "https://oapi.dingtalk.com/robot/send?access_token=xxxxxxxx"
-	url = "https://oapi.dingtalk.com"
-	accessToken = "7200s"
+	Name = "dingTalk"
+
+	webhookURLKey = "webhook_url"
 )
 
 type sender struct {
 	webhookURL string
+}
+
+func New(opt map[string]string) (providers.Sender, error) {
+	if err := validate(opt); err != nil {
+		return nil, err
+	}
+
+	return &sender{webhookURL:opt[webhookURLKey]}, nil
 }
 
 // TODO error more detail
@@ -28,6 +37,7 @@ func (s *sender) Send(msg string, receiver providers.Receiver) error {
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
@@ -82,14 +92,10 @@ func newPayload(msg string) []byte {
 	return data
 }
 
-func getAccessToken(appkey, appsecret string) {
-	req, err := http.NewRequest(http.MethodGet, "https://oapi.dingtalk.com/gettoken",  nil)
-	if err != nil {
-		log.Println(err)
+func validate(opt map[string]string) error {
+	if _, exists := opt[webhookURLKey]; !exists {
+		return fmt.Errorf("%s empty", webhookURLKey)
 	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Println(err)
-	}
-	log.Println(resp)
+
+	return nil
 }

@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"github.com/rancher/receiver/pkg/server"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -14,9 +15,7 @@ var (
 
 func main() {
 	flag.Parse()
-	s, err := server.New(*port, *config)
-	if err != nil {
-		log.Printf("new server error:%v", err)
+	if err := server.New(*port, *config).Run(); err != nil {
+		log.Fatalf("server run fatal:%v", err)
 	}
-	s.Run()
 }
