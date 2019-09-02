@@ -3,16 +3,18 @@ package options
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 
 	"github.com/rancher/receiver/pkg/providers"
 	"github.com/rancher/receiver/pkg/providers/alibaba"
 	"github.com/rancher/receiver/pkg/providers/dingtalk"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -23,8 +25,21 @@ var (
 
 // when occur error, it will panic directly
 func Init(configPath string) {
-	updateMemoryConfig(configPath)
-	go syncMemoryConfig(configPath)
+	dir := filepath.Dir(configPath)
+	log.Infof("config dir:%s\n", dir)
+	name := filepath.Base(configPath)
+	log.Infof("config name:%s\n", name)
+	viperConfigName := strings.TrimRight(name, ".yaml")
+	viper.AddConfigPath(dir)
+	viper.SetConfigName(viperConfigName)
+	viper.SetConfigType("yaml")
+
+	updateMemoryConfig()
+	viper.OnConfigChange(func(in fsnotify.Event) {
+		updateMemoryConfig()
+	})
+
+	go viper.WatchConfig()
 }
 
 func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Sender, error) {
@@ -44,53 +59,37 @@ func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Se
 	return receiver, sender, nil
 }
 
-func syncMemoryConfig(configPath string) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal("new config fs watcher err:", err)
-	}
-	if err := watcher.Add(configPath); err != nil {
-		log.Fatalf("watch file:%s err:%v", configPath, err)
-	}
-
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					break
-				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					updateMemoryConfig(configPath)
-				}
-			case err, _ := <-watcher.Errors:
-				log.Errorf("fs watcher event err:%v", err)
-			}
-		}
-	}()
-}
-
-func updateMemoryConfig(configPath string) {
-	opt, err := newOption(configPath)
-	if err != nil {
-		// log error, and not update
-		log.Fatalf("update config on path:%s, err:%v, will not update config", configPath, err)
+func updateMemoryConfig() {
+	if err := viper.ReadInConfig(); err != nil {
+		log.Errorf("read config err:%v", err)
 		return
 	}
 
+	receiversMap := viper.GetStringMap("receivers")
 	updateReceivers := make(map[string]providers.Receiver)
-	for _, v := range opt.Receivers {
-		updateReceivers[v.Name] = v
+	for k, v := range receiversMap {
+		receiver := providers.Receiver{}
+		if err := convertInterfaceToStruct(v, &receiver); err != nil {
+			log.Error("parse receiver:%s to struct err:%v", k, err)
+			return
+		}
+		updateReceivers[k] = receiver
 	}
 
+	providersMap := viper.GetStringMap("providers")
 	updateSenders := make(map[string]providers.Sender)
-	for k, v := range opt.Providers {
+	for k, v := range providersMap {
 		creator, err := getProviderCreator(k)
 		if err != nil {
 			log.Errorf("update config err:%v", err)
 			return
 		}
-		sender, err := creator(v)
+		optMap := make(map[string]string)
+		if err := convertInterfaceToStruct(v, &optMap); err != nil {
+			log.Errorf("parse provider:%s err:%v", k, err)
+			return
+		}
+		sender, err := creator(optMap)
 		if err != nil {
 			log.Errorf("update config err:%v", err)
 			return
@@ -103,7 +102,7 @@ func updateMemoryConfig(configPath string) {
 	defer mut.Unlock()
 	receivers = updateReceivers
 	senders = updateSenders
-	log.Info("update config sucess")
+	log.Info("update config success")
 }
 
 func getProviderCreator(name string) (providers.Creator, error) {
@@ -123,15 +122,23 @@ type option struct {
 	Receivers []providers.Receiver
 }
 
-func newOption(configPath string) (option, error) {
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return option{}, err
-	}
+func newOption(data []byte) (option, error) {
 	opt := option{}
 	if err := yaml.Unmarshal(data, &opt); err != nil {
 		return option{}, err
 	}
 
 	return opt, nil
+}
+
+func convertInterfaceToStruct(inter interface{}, s interface{}) error {
+	byteData, err := yaml.Marshal(inter)
+	if err != nil {
+		return err
+	}
+	if err := yaml.Unmarshal(byteData, s); err != nil {
+		return err
+	}
+
+	return nil
 }

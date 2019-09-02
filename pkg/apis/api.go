@@ -44,7 +44,7 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
-	log.Infof("receiver:%s,provider:%s,msg:%s\n", receiver.Name, receiver.Provider, msg)
+	log.Infof("receiver:%s,provider:%s,msg:%s\n", name, receiver.Provider, msg)
 	if err := sender.Send(msg, receiver); err != nil {
 		log.Errorf("send msg err:%v", err)
 		resp.WriteErrorString(500, err.Error())

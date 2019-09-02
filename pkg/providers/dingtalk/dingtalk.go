@@ -3,6 +3,7 @@ package dingtalk
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,15 +12,15 @@ import (
 	"github.com/rancher/receiver/pkg/providers"
 )
 
-
 const (
-	Name = "dingTalk"
+	Name = "dingtalk"
 
 	webhookURLKey = "webhook_url"
 )
 
 type sender struct {
 	webhookURL string
+	client     *http.Client
 }
 
 func New(opt map[string]string) (providers.Sender, error) {
@@ -27,7 +28,17 @@ func New(opt map[string]string) (providers.Sender, error) {
 		return nil, err
 	}
 
-	return &sender{webhookURL:opt[webhookURLKey]}, nil
+	c := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+	return &sender{
+		webhookURL: opt[webhookURLKey],
+		client:     c,
+	}, nil
 }
 
 // TODO error more detail
@@ -38,6 +49,7 @@ func (s *sender) Send(msg string, receiver providers.Receiver) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
@@ -60,7 +72,7 @@ func (s *sender) Send(msg string, receiver providers.Receiver) error {
 
 type payload struct {
 	MsgType string `json:"msgtype"`
-	Text struct{
+	Text    struct {
 		Content string `json:"content"`
 	} `json:"text"`
 	At struct {
@@ -69,8 +81,8 @@ type payload struct {
 }
 
 type dingtalkResp struct {
-	ErrCode int `json:"errcode"`
-	ErrMsg string `json:"errmsg"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 }
 
 func newPayload(msg string) []byte {

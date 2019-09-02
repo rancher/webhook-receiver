@@ -13,19 +13,19 @@ import (
 )
 
 const (
-	Name            = "alibaba"
+	Name = "alibaba"
 
-	regionID        = "cn-hangzhou"
+	regionID = "cn-hangzhou"
 
 	accessKeyIDKey     = "access_key_id"
 	accessKeySecretKey = "access_key_secret"
-	signNameKey = "sign_name"
-	templateCodeKey = "template_code"
+	signNameKey        = "sign_name"
+	templateCodeKey    = "template_code"
 )
 
 type sender struct {
-	client *sdk.Client
-	signName string
+	client       *sdk.Client
+	signName     string
 	templateCode string
 }
 
@@ -61,13 +61,14 @@ func New(opt map[string]string) (providers.Sender, error) {
 	}
 
 	client, err := sdk.NewClientWithAccessKey(regionID, opt[accessKeyIDKey], opt[accessKeySecretKey])
+	client.SetHTTPSInsecure(true)
 	if err != nil {
 		return nil, err
 	}
 	return &sender{
-		client: client,
+		client:       client,
 		templateCode: opt[templateCodeKey],
-		signName: opt[signNameKey],
+		signName:     opt[signNameKey],
 	}, nil
 }
 
@@ -81,7 +82,7 @@ func validate(opt map[string]string) error {
 	if _, exists := opt[templateCodeKey]; !exists {
 		return errors.New("template_code can't be empty")
 	}
-	if _, exists := opt[signNameKey];  !exists {
+	if _, exists := opt[signNameKey]; !exists {
 		return errors.New("sig_name can't be empty")
 	}
 
