@@ -1,15 +1,15 @@
 # webhook-receiver
 
-webhook-receiver is an open source project that provides a tools for receive prometheus alertmanager alert and send it to other backend
+webhook-receiver可以对接prometheus的alertmanager，通过配置可以将alertmanager的告警发送至对应的后端
 
 ## Support
 
-- aliyun sms(阿里云短信服务)
-- dingtalk robot(钉钉机器人)
+- 阿里云短信服务
+- 钉钉机器人
 
 ## Installation
 
-you can use rancher app store to install it, [chart](https://github.com/gangchang/pandaria-catalog)
+通过rancher的应用商店进行部署，[应用商店地址](https://github.com/cnrancher/pandaria-catalog), 其下的webhook-receiver及为该服务，详细的配置参考其对应的readme
 
 ## [Sample config](https://github.com/cnrancher/webhook-receiver/blob/master/examples/config.yaml)
 
