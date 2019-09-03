@@ -41,21 +41,11 @@ steps:
     event:
     - tag
 
-- name: stage-binaries
-  image: rancher/dapper:v0.4.1
-  commands:
-  - "cp -r ./bin/* ./package/"
-  when:
-    event:
-    - push
-    - tag
-
 - name: docker-publish-head
   image: plugins/docker
   settings:
     build_args:
     - ARCH=amd64
-    context: package/
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
     tag: latest
@@ -76,7 +66,6 @@ steps:
   settings:
     build_args:
     - ARCH=amd64
-    context: package/
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
     password:
