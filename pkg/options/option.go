@@ -70,7 +70,7 @@ func updateMemoryConfig() {
 	for k, v := range receiversMap {
 		receiver := providers.Receiver{}
 		if err := convertInterfaceToStruct(v, &receiver); err != nil {
-			log.Error("parse receiver:%s to struct err:%v", k, err)
+			log.Errorf("parse receiver:%s to struct err:%v", k, err)
 			return
 		}
 		updateReceivers[k] = receiver
