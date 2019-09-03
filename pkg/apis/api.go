@@ -49,9 +49,10 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 		log.Errorf("send msg err:%v", err)
 		resp.WriteErrorString(500, err.Error())
 		return
+	} else {
+		resp.WriteHeader(200)
+		log.Infof("send msg successful")
 	}
-
-	log.Infof("send msg successful")
 
 	return
 }
