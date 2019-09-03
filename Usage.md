@@ -1,7 +1,5 @@
 # webhook-receiver使用文档
 
-## 镜像制作，将源码clone到本地后，执行make，[源码地址](https://github.com/cnrancher/webhook-receiver)
-
 ## rancher平台下，使用应用商店进行部署，[chart地址](https://github.com/gangchang/pandaria-catalog)
 
 ## NOTE
