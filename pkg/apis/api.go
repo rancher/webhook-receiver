@@ -17,6 +17,8 @@ func RegisterAPIs() {
 		Consumes(restful.MIME_JSON).
 		Produces(restful.MIME_JSON)
 	alertWs.Route(alertWs.POST("/{receiver-name}").To(sendAlert))
+	alertWs.Route(alertWs.GET("/healthz").To(reportLiveness))
+	alertWs.Route(alertWs.GET("/state").To(reportState))
 	restful.Add(alertWs)
 }
 
@@ -55,4 +57,19 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 	}
 
 	return
+}
+
+func reportLiveness(req *restful.Request, resp *restful.Response) {
+	resp.WriteHeader(200)
+	return
+}
+
+func reportState(req *restful.Request, resp *restful.Response) {
+	if options.GetState() {
+		resp.WriteHeader(200)
+		return
+	} else {
+		resp.WriteHeader(500)
+		return
+	}
 }

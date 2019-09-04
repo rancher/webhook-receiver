@@ -21,6 +21,9 @@ var (
 	mut       sync.RWMutex
 	receivers map[string]providers.Receiver
 	senders   map[string]providers.Sender
+
+	// No need to lock
+	state bool
 )
 
 // when occur error, it will panic directly
@@ -62,6 +65,7 @@ func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Se
 func updateMemoryConfig() {
 	if err := viper.ReadInConfig(); err != nil {
 		log.Errorf("read config err:%v", err)
+		setStatus(false)
 		return
 	}
 
@@ -71,6 +75,7 @@ func updateMemoryConfig() {
 		receiver := providers.Receiver{}
 		if err := convertInterfaceToStruct(v, &receiver); err != nil {
 			log.Errorf("parse receiver:%s to struct err:%v", k, err)
+			setStatus(false)
 			return
 		}
 		updateReceivers[k] = receiver
@@ -82,21 +87,25 @@ func updateMemoryConfig() {
 		creator, err := getProviderCreator(k)
 		if err != nil {
 			log.Errorf("update config err:%v", err)
+			setStatus(false)
 			return
 		}
 		optMap := make(map[string]string)
 		if err := convertInterfaceToStruct(v, &optMap); err != nil {
 			log.Errorf("parse provider:%s err:%v", k, err)
+			setStatus(false)
 			return
 		}
 		sender, err := creator(optMap)
 		if err != nil {
 			log.Errorf("update config err:%v", err)
+			setStatus(false)
 			return
 		}
 		updateSenders[k] = sender
 	}
 
+	setStatus(true)
 	// replace
 	mut.Lock()
 	defer mut.Unlock()
@@ -141,4 +150,12 @@ func convertInterfaceToStruct(inter interface{}, s interface{}) error {
 	}
 
 	return nil
+}
+
+func GetState() bool {
+	return state
+}
+
+func setStatus(now bool)  {
+	state = now
 }
