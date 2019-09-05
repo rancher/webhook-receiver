@@ -50,7 +50,7 @@ func (s *sender) Send(msg string, receiver providers.Receiver) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
 	}
