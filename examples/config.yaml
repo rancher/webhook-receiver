@@ -21,3 +21,5 @@ receivers:
     provider: alibaba
     to:
     - 120
+# Info,Error
+logLevel: Error
