@@ -55,7 +55,7 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
-	msg, err := tmpl.ExecuteTextString(data)
+	msg, err := tmpl.ExecuteTextString(td)
 	if err != nil {
 		log.Errorf("tmpl parse err: %v", err)
 		resp.WriteErrorString(500, err.Error())
