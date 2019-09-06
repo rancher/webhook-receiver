@@ -2,6 +2,8 @@ package apis
 
 import (
 	"encoding/json"
+	"github.com/prometheus/common/model"
+	"io/ioutil"
 
 	"github.com/emicklei/go-restful"
 	"github.com/prometheus/alertmanager/template"
@@ -23,9 +25,23 @@ func RegisterAPIs() {
 }
 
 func sendAlert(req *restful.Request, resp *restful.Response) {
-	// TODO http req response action
-	data := template.Data{}
-	if err := json.NewDecoder(req.Request.Body).Decode(&data); err != nil {
+	bodyData, err := ioutil.ReadAll(req.Request.Body)
+	if err != nil {
+		log.Errorf("read req body err:%v", err)
+		resp.WriteErrorString(400, err.Error())
+		return
+	}
+
+	td := template.Data{}
+	if err := json.Unmarshal(bodyData, &td); err != nil {
+		// rancher test send
+		rtd := model.Alerts{}
+		if err := json.Unmarshal(bodyData, &rtd); err == nil {
+			log.Info("test success")
+			resp.WriteHeader(200)
+			return
+		}
+
 		log.Errorf("webhook data parse err:%v", err)
 		resp.WriteErrorString(400, err.Error())
 		return

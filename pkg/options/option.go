@@ -17,6 +17,8 @@ import (
 	"github.com/rancher/webhook-receiver/pkg/providers/dingtalk"
 )
 
+const logLevelErr = "set log level error, support Info,Error"
+
 var (
 	mut       sync.RWMutex
 	receivers map[string]providers.Receiver
@@ -29,9 +31,7 @@ var (
 // when occur error, it will panic directly
 func Init(configPath string) {
 	dir := filepath.Dir(configPath)
-	log.Infof("config dir:%s\n", dir)
 	name := filepath.Base(configPath)
-	log.Infof("config name:%s\n", name)
 	viperConfigName := strings.TrimRight(name, ".yaml")
 	viper.AddConfigPath(dir)
 	viper.SetConfigName(viperConfigName)
@@ -63,6 +63,7 @@ func GetReceiverAndSender(receiverName string) (providers.Receiver, providers.Se
 }
 
 func updateMemoryConfig() {
+	log.Info("update memory config")
 	if err := viper.ReadInConfig(); err != nil {
 		log.Errorf("read config err:%v", err)
 		setStatus(false)
@@ -103,6 +104,24 @@ func updateMemoryConfig() {
 			return
 		}
 		updateSenders[k] = sender
+	}
+
+
+	logLevel := viper.Get("logLevel")
+	ll, ok := logLevel.(string)
+	if ok {
+		switch ll {
+		case "Info":
+			log.SetLevel(log.InfoLevel)
+			log.Info("set log level info")
+		case "Error":
+			log.SetLevel(log.ErrorLevel)
+			log.Info("set log level error")
+		default:
+			log.Error(logLevelErr)
+		}
+	} else {
+		log.Error(logLevelErr)
 	}
 
 	setStatus(true)
