@@ -32,6 +32,14 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 		return
 	}
 
+	name := req.PathParameter("receiver-name")
+	receiver, sender, err := options.GetReceiverAndSender(name)
+	if err != nil {
+		log.Errorf("get receiver name:%s err:%v", name, err)
+		resp.WriteErrorString(500, err.Error())
+		return
+	}
+
 	td := template.Data{}
 	if err := json.Unmarshal(bodyData, &td); err != nil {
 		// rancher test send
@@ -44,14 +52,6 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 
 		log.Errorf("webhook data parse err:%v", err)
 		resp.WriteErrorString(400, err.Error())
-		return
-	}
-
-	name := req.PathParameter("receiver-name")
-	receiver, sender, err := options.GetReceiverAndSender(name)
-	if err != nil {
-		log.Errorf("get receiver name:%s err:%v", name, err)
-		resp.WriteErrorString(500, err.Error())
 		return
 	}
 
