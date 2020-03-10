@@ -1,4 +1,4 @@
-package alibaba
+package aliyunsms
 
 import (
 	"errors"
@@ -13,33 +13,36 @@ import (
 )
 
 const (
-	Name = "alibaba"
+	Name = "ALIYUN_SMS"
 
-	regionID = "cn-hangzhou"
-
-	accessKeyIDKey     = "access_key_id"
-	accessKeySecretKey = "access_key_secret"
-	signNameKey        = "sign_name"
-	templateCodeKey    = "template_code"
+	regionID        = "cn-hangzhou"
+	accessKeyIDKey  = "access_key_id"
+	signNameKey     = "sign_name"
+	templateCodeKey = "template_code"
+	proxyURLKey     = "proxy_url"
 )
 
 type sender struct {
 	client       *sdk.Client
 	signName     string
 	templateCode string
+	proxyURL     string
 }
 
 func (s *sender) Send(msg string, receiver providers.Receiver) error {
+	if s.proxyURL != "" {
+		s.client.SetHttpsProxy(s.proxyURL)
+	}
+
 	request := requests.NewCommonRequest()
 	request.Method = http.MethodPost
 	request.Scheme = "https"
 	request.Domain = "dysmsapi.aliyuncs.com"
 	request.Version = "2017-05-25"
 	request.ApiName = "SendSms"
-	request.QueryParams["RegionId"] = "cn-hangzhou"
+	request.QueryParams["RegionId"] = regionID
 	request.QueryParams["PhoneNumbers"] = strings.Join(receiver.To, ",")
 	request.QueryParams["SignName"] = s.signName
-	fmt.Println(s.signName)
 	request.QueryParams["TemplateCode"] = s.templateCode
 	request.QueryParams["TemplateParam"] = fmt.Sprintf(`{"alert":"%s"}`, msg)
 	request.SetContent([]byte(msg))
@@ -60,16 +63,16 @@ func New(opt map[string]string) (providers.Sender, error) {
 		return nil, err
 	}
 
-	client, err := sdk.NewClientWithAccessKey(regionID, opt[accessKeyIDKey], opt[accessKeySecretKey])
+	client, err := sdk.NewClientWithAccessKey(regionID, opt[accessKeyIDKey], opt["access_key_secret"])
 	if err != nil {
 		return nil, err
 	}
-	client.SetHTTPSInsecure(true)
 
 	return &sender{
 		client:       client,
 		templateCode: opt[templateCodeKey],
 		signName:     opt[signNameKey],
+		proxyURL:     opt[proxyURLKey],
 	}, nil
 }
 
@@ -77,7 +80,7 @@ func validate(opt map[string]string) error {
 	if _, exists := opt[accessKeyIDKey]; !exists {
 		return errors.New("access_key_id can't be empty")
 	}
-	if _, exists := opt[accessKeySecretKey]; !exists {
+	if _, exists := opt["access_key_secret"]; !exists {
 		return errors.New("access_key_secret can't be empty")
 	}
 	if _, exists := opt[templateCodeKey]; !exists {

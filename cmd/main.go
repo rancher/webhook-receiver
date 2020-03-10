@@ -2,10 +2,9 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/rancher/webhook-receiver/pkg/server"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var (
