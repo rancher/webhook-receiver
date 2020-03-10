@@ -13,8 +13,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/rancher/webhook-receiver/pkg/providers"
-	"github.com/rancher/webhook-receiver/pkg/providers/alibaba"
+	"github.com/rancher/webhook-receiver/pkg/providers/aliyunsms"
 	"github.com/rancher/webhook-receiver/pkg/providers/dingtalk"
+	"github.com/rancher/webhook-receiver/pkg/providers/msteams"
 )
 
 const logLevelErr = "set log level error, support Info,Error"
@@ -23,12 +24,9 @@ var (
 	mut       sync.RWMutex
 	receivers map[string]providers.Receiver
 	senders   map[string]providers.Sender
-
-	// No need to lock
-	state bool
+	state     bool
 )
 
-// when occur error, it will panic directly
 func Init(configPath string) {
 	dir := filepath.Dir(configPath)
 	name := filepath.Base(configPath)
@@ -85,18 +83,25 @@ func updateMemoryConfig() {
 	providersMap := viper.GetStringMap("providers")
 	updateSenders := make(map[string]providers.Sender)
 	for k, v := range providersMap {
-		creator, err := getProviderCreator(k)
-		if err != nil {
-			log.Errorf("update config err:%v", err)
-			setStatus(false)
-			return
-		}
 		optMap := make(map[string]string)
 		if err := convertInterfaceToStruct(v, &optMap); err != nil {
 			log.Errorf("parse provider:%s err:%v", k, err)
 			setStatus(false)
 			return
 		}
+
+		if _, exists := optMap["type"]; !exists {
+			log.Errorf("no required type field defined for %s", k)
+			return
+		}
+
+		creator, err := getProviderCreator(optMap["type"])
+		if err != nil {
+			log.Errorf("update config err:%v", err)
+			setStatus(false)
+			return
+		}
+
 		sender, err := creator(optMap)
 		if err != nil {
 			log.Errorf("update config err:%v", err)
@@ -105,7 +110,6 @@ func updateMemoryConfig() {
 		}
 		updateSenders[k] = sender
 	}
-
 
 	logLevel := viper.Get("logLevel")
 	ll, ok := logLevel.(string)
@@ -118,14 +122,13 @@ func updateMemoryConfig() {
 			log.SetLevel(log.ErrorLevel)
 			log.Info("set log level error")
 		default:
-			log.Error(logLevelErr)
+			log.SetLevel(log.InfoLevel)
 		}
 	} else {
-		log.Error(logLevelErr)
+		log.SetLevel(log.InfoLevel)
 	}
 
 	setStatus(true)
-	// replace
 	mut.Lock()
 	defer mut.Unlock()
 	receivers = updateReceivers
@@ -135,16 +138,17 @@ func updateMemoryConfig() {
 
 func getProviderCreator(name string) (providers.Creator, error) {
 	switch name {
-	case alibaba.Name:
-		return alibaba.New, nil
+	case aliyunsms.Name:
+		return aliyunsms.New, nil
 	case dingtalk.Name:
 		return dingtalk.New, nil
+	case msteams.Name:
+		return msteams.New, nil
 	default:
 		return nil, errors.New(fmt.Sprintf("provider %s is not support", name))
 	}
 }
 
-// for yaml parse
 type option struct {
 	Providers map[string]map[string]string
 	Receivers []providers.Receiver
@@ -175,6 +179,6 @@ func GetState() bool {
 	return state
 }
 
-func setStatus(now bool)  {
+func setStatus(now bool) {
 	state = now
 }
