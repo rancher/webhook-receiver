@@ -17,6 +17,9 @@ func init() {
 
 const (
 	NotificationTmpl = `
+{{- if eq .Status "resolved" -}}
+[Resolved]
+{{- end -}}
 {{- if eq .CommonLabels.alert_type "event" }}
 {{ .CommonLabels.event_type}} event of {{.GroupLabels.resource_kind}} occurred
 {{- else if eq .CommonLabels.alert_type "systemService" }}
@@ -39,7 +42,17 @@ The workload {{ if .GroupLabels.workload_namespace}}{{.GroupLabels.workload_name
 The metric {{ .CommonLabels.alert_name}} crossed the threshold
 {{ end -}}
 
+{{- if eq .Status "resolved" -}}
+{{ range .Alerts.Resolved }}
+{{ template "__text_single" . }}
+{{ end -}}
+{{- else}}
 {{ range .Alerts.Firing }}
+{{ template "__text_single" . }}
+{{ end -}}
+{{ end -}}
+
+{{- define "__text_single" -}}
 Alert Name: {{ .Labels.alert_name}}
 Severity: {{ .Labels.severity}}
 Cluster Name: {{.Labels.cluster_name}}
