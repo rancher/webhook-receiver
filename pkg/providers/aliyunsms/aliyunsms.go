@@ -1,6 +1,7 @@
 package aliyunsms
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -29,6 +30,12 @@ type sender struct {
 	proxyURL     string
 }
 
+type aliyunResponse struct {
+	Message   string `json:"message"`
+	RequestID string `json:"requestId"`
+	Code      string `json:"code"`
+}
+
 func (s *sender) Send(msg string, receiver providers.Receiver) error {
 	if s.proxyURL != "" {
 		s.client.SetHttpsProxy(s.proxyURL)
@@ -53,6 +60,15 @@ func (s *sender) Send(msg string, receiver providers.Receiver) error {
 	}
 	if !res.IsSuccess() {
 		return fmt.Errorf("send faliure, resp is :%s", res.GetHttpContentString())
+	}
+
+	var alyResp aliyunResponse
+	if err := json.Unmarshal(res.GetHttpContentBytes(), &alyResp); err != nil {
+		return err
+	}
+
+	if alyResp.Code != "OK" {
+		return fmt.Errorf("failed to send Aliyun SMS message. %s", alyResp.Message)
 	}
 
 	return nil
