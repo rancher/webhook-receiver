@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk"
@@ -51,7 +52,7 @@ func (s *sender) Send(msg string, receiver providers.Receiver) error {
 	request.QueryParams["PhoneNumbers"] = strings.Join(receiver.To, ",")
 	request.QueryParams["SignName"] = s.signName
 	request.QueryParams["TemplateCode"] = s.templateCode
-	request.QueryParams["TemplateParam"] = fmt.Sprintf(`{"alert":"%s"}`, msg)
+	request.QueryParams["TemplateParam"] = fmt.Sprintf(`{"alert":%s}`, strconv.Quote(msg))
 	request.SetContent([]byte(msg))
 
 	res, err := s.client.ProcessCommonRequest(request)
