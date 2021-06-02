@@ -77,13 +77,10 @@ func sendAlert(req *restful.Request, resp *restful.Response) {
 		resp.WriteHeader(200)
 		log.Infof("send msg successful")
 	}
-
-	return
 }
 
 func reportLiveness(req *restful.Request, resp *restful.Response) {
 	resp.WriteHeader(200)
-	return
 }
 
 func reportState(req *restful.Request, resp *restful.Response) {
