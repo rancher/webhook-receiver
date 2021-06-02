@@ -1,7 +1,6 @@
 package options
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -17,8 +16,6 @@ import (
 	"github.com/rancher/webhook-receiver/pkg/providers/dingtalk"
 	"github.com/rancher/webhook-receiver/pkg/providers/msteams"
 )
-
-const logLevelErr = "set log level error, support Info,Error"
 
 var (
 	mut       sync.RWMutex
@@ -145,22 +142,8 @@ func getProviderCreator(name string) (providers.Creator, error) {
 	case msteams.Name:
 		return msteams.New, nil
 	default:
-		return nil, errors.New(fmt.Sprintf("provider %s is not support", name))
+		return nil, fmt.Errorf("provider %s is not support", name)
 	}
-}
-
-type option struct {
-	Providers map[string]map[string]string
-	Receivers []providers.Receiver
-}
-
-func newOption(data []byte) (option, error) {
-	opt := option{}
-	if err := yaml.Unmarshal(data, &opt); err != nil {
-		return option{}, err
-	}
-
-	return opt, nil
 }
 
 func convertInterfaceToStruct(inter interface{}, s interface{}) error {
