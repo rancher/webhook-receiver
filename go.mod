@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1117
-	github.com/emicklei/go-restful v2.15.0+incompatible
+	github.com/emicklei/go-restful v2.16.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/prometheus/alertmanager v0.21.0
 	github.com/sirupsen/logrus v1.8.1
